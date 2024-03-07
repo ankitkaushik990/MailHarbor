@@ -1,24 +1,50 @@
 const { Message } = require("../model/msg.schema");
-const { msgSchema } = require("../utils/validator");
 const { HttpException } = require("../errors/httpexception");
 const nodemailer = require("nodemailer");
 const logger = require("log4js").getLogger("middleware");
 
-// Initialize nodemailer transporter outside the class
-const transporter = nodemailer.createTransport({
-  service: "Gmail",
-  auth: {
-    user: "itstestpurposemail1@gmail.com",
-    pass: "dypapjecgmngfbxd",
-  },
-});
+function validateUserData(userData) {
+  if (
+    !userData.name ||
+    userData.name.length < 2 ||
+    userData.name.length > 40 ||
+    !/^[a-zA-Z\s]+$/.test(userData.name)
+  ) {
+    throw new HttpException(400, "Invalid name");
+  }
+
+  if (
+    !userData.email ||
+    !/^[\w-]+(?:\.[\w-]+)*@[a-zA-Z_]+?\.[a-zA-Z]{2,}$/.test(userData.email)
+  ) {
+    throw new HttpException(400, "Invalid email address");
+  }
+
+  if (
+    !userData.message ||
+    userData.message.length < 1 ||
+    userData.message.length > 1000
+  ) {
+    throw new HttpException(400, "maximum 1000 charachter are allowed");
+  }
+}
 
 class MsgService {
   async send(userData) {
-    const { error } = msgSchema.validate(userData);
-    if (error) {
-      throw new HttpException(400, error.details[0].message);
+    try {
+      await validateUserData(userData);
+    } catch (error) {
+      throw error;
     }
+
+    const transporter = nodemailer.createTransport({
+      service: "Gmail",
+      auth: {
+        user: "itstestpurposemail1@gmail.com",
+        pass: "dypapjecgmngfbxd",
+      },
+    });
+
     const newMessage = new Message({
       name: userData.name,
       email: userData.email,
@@ -26,15 +52,12 @@ class MsgService {
     });
     await newMessage.save();
 
-    // Send email asynchronously without waiting for its completion
-    await this.sendEmail(userData);
+    await this.sendEmail(userData, transporter);
 
-    // Return response only after email is sent
     return "message sent successfully";
   }
 
-  async sendEmail(userData) {
-    // Constructing email body including message content and signature
+  async sendEmail(userData, transporter) {
     let emailContent = `<p>Name: ${userData.name}</p><p>Email: ${userData.email}</p><p>Message: ${userData.message}</p>`;
     let signature = `
         <table cellpadding="0" cellspacing="0" style="font-family: Arial; font-size: 14px;">
@@ -53,8 +76,6 @@ class MsgService {
             </tr>
         </table>
     `;
-
-    // Adding some space between email content and signature
     let space = '<p style="margin-bottom: 20px;"></p>';
 
     let mailOptions = {
@@ -64,7 +85,6 @@ class MsgService {
       html: emailContent + space + signature,
     };
 
-    // Use promisified version of sendMail
     return new Promise((resolve, reject) => {
       transporter.sendMail(mailOptions, (err, info) => {
         if (err) {

@@ -12,10 +12,7 @@ const messageSchema = new mongoose.Schema({
     required: [true, "Email is required"],
     trim: true,
     lowercase: true,
-    match: [
-      /^[\w-]+(?:\.[\w-]+)*@[a-zA-Z_]+?\.[a-zA-Z]{2,}$/,
-      "Please provide a valid email",
-    ],
+    match: [/^[\w-]+(?:\.[\w-]+)*@[a-zA-Z_]+?\.[a-zA-Z]{2,}$/, "Invalid email"],
   },
   message: {
     type: String,

@@ -1,14 +1,15 @@
 const { Message } = require("../model/msg.schema");
-const { getSchema } = require("../utils/validator");
 const { HttpException } = require("../errors/httpexception");
 const User = require("../model/user.schema");
 const bcrypt = require("bcrypt");
 
 class GetService {
   async get(userData) {
-    const { error } = getSchema.validate(userData);
-    if (error) {
-      throw new HttpException(400, error.details[0].message);
+    if (
+      !userData.email ||
+      !/^[\w-]+(?:\.[\w-]+)*@[a-zA-Z_]+?\.[a-zA-Z]{2,}$/.test(userData.email)
+    ) {
+      throw new HttpException(400, "Invalid email address");
     }
     const user = await User.findOne({ email: userData.email });
     if (!user) {
